@@ -42,7 +42,7 @@ object PluginLoader {
             val dexFile = File(context.filesDir, DEX_FILE)
 
             val repo = fetchRepo()
-                ?: return@withContext Failed(
+                ?: return@withContext Result.Failed(
                     "repo.json nahi mila. GitHub repo 'akhilflix' me code push karo " +
                         "taaki CI plugin build kare, phir retry karo."
                 )
@@ -53,7 +53,7 @@ object PluginLoader {
             }
 
             val plugin = loadPlugin(context, dexFile, repo.pluginClass)
-                ?: return@withContext Failed("Plugin load nahi hua (class: ${repo.pluginClass}).")
+                ?: return@withContext Result.Failed("Plugin load nahi hua (class: ${repo.pluginClass}).")
             Result.Ready(plugin, repo.version)
         } catch (e: Exception) {
             Result.Failed(e.message ?: "Plugin load failed.")
