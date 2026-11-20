@@ -26,7 +26,9 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MimeTypes
+import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.ui.PlayerView
 import com.akhilflix.app.data.model.Video
 
@@ -35,17 +37,27 @@ import com.akhilflix.app.data.model.Video
  * HLS (.m3u8), DASH (.mpd), progressive MP4/MKV/WebM — ExoPlayer
  * auto-detects the format from the URL. The built-in PlayerView controller
  * gives play/pause, seek, playback speed, quality selection and subtitles.
+ *
+ * `headers` (e.g. Referer / User-Agent from a plugin's ExtractorLink)
+ * are sent with every stream request; empty for plain course videos.
  */
 @Composable
 fun ExoPlayerScreen(
     video: Video,
     streamUrl: String,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    headers: Map<String, String> = emptyMap()
 ) {
     val context = LocalContext.current
 
     val exoPlayer = remember(streamUrl) {
-        ExoPlayer.Builder(context).build().apply {
+        // Custom HTTP factory so plugin links can carry their headers
+        // (Referer etc.). With no headers it behaves exactly like before.
+        val httpFactory = DefaultHttpDataSource.Factory()
+            .setDefaultRequestProperties(headers)
+        ExoPlayer.Builder(context)
+            .setMediaSourceFactory(DefaultMediaSourceFactory(httpFactory))
+            .build().apply {
             val mimeType = mimeTypeFor(streamUrl)
             val subtitleConfigs = buildList {
                 // Null-safe: subtitleUrl is null when the JSON has no
