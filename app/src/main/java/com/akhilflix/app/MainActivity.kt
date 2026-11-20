@@ -61,7 +61,18 @@ private fun HostScreen() {
 
     when (val s = state) {
         is HostState.Loading -> LoadingScreen()
-        is HostState.Ready -> s.plugin.Content()
+        is HostState.Ready -> {
+            // If the plugin's UI throws (bad DEX, missing class, bad data),
+            // show the error instead of the app closing silently.
+            try {
+                s.plugin.Content()
+            } catch (e: Throwable) {
+                ErrorScreen(
+                    message = "Plugin UI error: ${e::class.java.simpleName}: ${e.message ?: "unknown"}",
+                    onRetry = { retryCount++ }
+                )
+            }
+        }
         is HostState.Failed -> ErrorScreen(
             message = s.message,
             onRetry = { retryCount++ }
