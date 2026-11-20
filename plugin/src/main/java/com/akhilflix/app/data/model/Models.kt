@@ -86,6 +86,50 @@ data class AddedRepo(
 )
 
 // ---------------------------------------------------------------------------
+// CloudStream plugin repos (repo.json) — the OTHER kind of repo the user
+// can add: a real CloudStream extensions repo, e.g.
+// recloudstream/extensions. Its repo.json points at one or more
+// plugins.json lists; each entry is a plugin (.cs3) the user can
+// browse in AkhilFlix and download.
+// ---------------------------------------------------------------------------
+
+/** A CloudStream repo manifest (repo.json). */
+data class RepoJson(
+    @SerializedName("name") val name: String? = null,
+    @SerializedName("description") val description: String? = null,
+    @SerializedName("pluginLists") val pluginLists: List<String>? = null
+)
+
+/** One plugin inside a CloudStream repo (an entry of its plugins.json). */
+data class PluginInfo(
+    @SerializedName("name") val name: String? = null,
+    @SerializedName("internalName") val internalName: String? = null,
+    @SerializedName("description") val description: String? = null,
+    @SerializedName("authors") val authors: List<String>? = null,
+    @SerializedName("version") val version: Int = 0,
+    @SerializedName("iconUrl") val iconUrl: String? = null,
+    @SerializedName("tvTypes") val tvTypes: List<String>? = null,
+    @SerializedName("repositoryUrl") val repositoryUrl: String? = null,
+    // Direct link to the plugin file (.cs3)
+    @SerializedName("url") val cs3Url: String? = null
+) {
+    /** Display name: "name" first, then internalName, never blank. */
+    fun displayName(): String =
+        name?.ifBlank { null } ?: internalName?.ifBlank { null } ?: "Plugin"
+
+    /** Icon URL with the %size% placeholder filled in for Coil. */
+    fun iconUrlSized(size: Int = 128): String? =
+        iconUrl?.replace("%size%", size.toString())
+}
+
+/** A CloudStream plugin repo the user added (saved in DataStore). */
+data class AddedPluginRepo(
+    @SerializedName("id") val id: String,
+    @SerializedName("name") val name: String,
+    @SerializedName("repoJsonUrl") val repoJsonUrl: String
+)
+
+// ---------------------------------------------------------------------------
 // Course catalogs (youtube_courses.json) — same schema as the
 // programming-courses and dhruv-rathee-courses repos.
 // ---------------------------------------------------------------------------
