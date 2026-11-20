@@ -77,7 +77,10 @@ private fun RowSection(
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         items(courses) { course ->
-            CourseCard(course, onClick = { onCourseClick(it, section.clickAction) })
+            // Null-safe: clickAction is null for sections that don't set
+            // it in the JSON (Gson), so default to "detail" here — passing
+            // null into the (Course, String) lambda crashed on every tap.
+            CourseCard(course, onClick = { onCourseClick(it, section.clickAction ?: "detail") })
         }
     }
 }
@@ -98,7 +101,7 @@ private fun GridSection(
         modifier = Modifier.height(440.dp)
     ) {
         items(courses) { course ->
-            CourseCard(course, modifier = Modifier, onClick = { onCourseClick(it, section.clickAction) })
+            CourseCard(course, modifier = Modifier, onClick = { onCourseClick(it, section.clickAction ?: "detail") })
         }
     }
 }
