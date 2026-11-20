@@ -160,13 +160,16 @@ fun PluginDetailScreen(
                     }
                 }
                 is AnimeLoadResponse -> {
+                    // Anime episodes are grouped by dub status
+                    // (Subbed / Dubbed) — flatten them into one list.
+                    val allEpisodes = detail.episodes.values.flatten()
                     item {
                         Text(
-                            text = "Episodes (${detail.episodes.size})",
+                            text = "Episodes (${allEpisodes.size})",
                             style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
                         )
                     }
-                    items(detail.episodes) { episode ->
+                    items(allEpisodes) { episode ->
                         EpisodeRow(episode) {
                             viewModel.playData(
                                 episode.name ?: detail.name,
