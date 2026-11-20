@@ -39,8 +39,12 @@ fun VideoPlayerScreen(
     val video = viewModel.videoById(videoId)
 
     // Direct link present -> universal ExoPlayer (PSPlayer-style).
-    if (video != null && video.streamUrl.isNotBlank()) {
-        ExoPlayerScreen(video = video, streamUrl = video.streamUrl, onBack = onBack)
+    // Null-safe: streamUrl is null for YouTube catalog videos (Gson
+    // leaves the field null when the JSON has no streamUrl), so a plain
+    // isNotBlank() here crashed with NullPointerException on every tap.
+    val streamUrl = video?.streamUrl
+    if (video != null && !streamUrl.isNullOrBlank()) {
+        ExoPlayerScreen(video = video, streamUrl = streamUrl, onBack = onBack)
         return
     }
 
