@@ -55,8 +55,13 @@ object PluginLoader {
             val plugin = loadPlugin(context, dexFile, repo.pluginClass)
                 ?: return@withContext Result.Failed("Plugin load nahi hua (class: ${repo.pluginClass}).")
             Result.Ready(plugin, repo.version)
-        } catch (e: Exception) {
-            Result.Failed(e.message ?: "Plugin load failed.")
+        } catch (e: Throwable) {
+            // Catch Throwable, not just Exception: plugin loading can throw
+            // Errors (NoClassDefFoundError, VerifyError) that must show an
+            // error screen instead of crashing the app.
+            Result.Failed(
+                "Plugin load failed: ${e::class.java.simpleName}: ${e.message ?: "unknown"}"
+            )
         }
     }
 
