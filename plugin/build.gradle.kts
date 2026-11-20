@@ -9,7 +9,9 @@ plugins {
 
 android {
     namespace = "com.akhilflix.app"
-    compileSdk = 34
+    // compileSdk 37: the CloudStream API library's AAR requires
+    // minCompileSdk 37 (run #95 failed with compileSdk 34).
+    compileSdk = 37
 
     defaultConfig {
         minSdk = 24
