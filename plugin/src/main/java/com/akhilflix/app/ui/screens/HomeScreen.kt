@@ -27,6 +27,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.akhilflix.app.data.model.AppAction
 import com.akhilflix.app.data.model.Course
+import com.akhilflix.app.data.model.PluginInfo
 import com.akhilflix.app.ui.components.PluginSection
 import com.akhilflix.app.ui.components.SectionRenderer
 import com.akhilflix.app.ui.viewmodel.HomeViewModel
@@ -44,7 +45,8 @@ fun HomeScreen(
     onCourseClick: (Course, String) -> Unit,
     onWatchClick: (Course) -> Unit,
     onActionClick: (AppAction) -> Unit,
-    onReposClick: () -> Unit
+    onReposClick: () -> Unit,
+    onPluginClick: (PluginInfo) -> Unit = {}
 ) {
     val state by viewModel.uiState.collectAsState()
     var refreshing by remember { mutableStateOf(false) }
@@ -121,10 +123,12 @@ fun HomeScreen(
                 )
             }
             // CloudStream plugin repos the user added (repo.json).
+            // Tapping a plugin RUNS it (loads its .cs3).
             items(state.pluginRepos) { pluginRepo ->
                 PluginSection(
                     repoName = pluginRepo.repo.name,
-                    plugins = pluginRepo.plugins
+                    plugins = pluginRepo.plugins,
+                    onPluginClick = onPluginClick
                 )
             }
         }
