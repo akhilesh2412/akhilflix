@@ -98,9 +98,12 @@ data class Video(
     // Direct stream URL (HLS .m3u8 / DASH .mpd / MP4 / MKV / WebM).
     // When set, the video plays in the advanced ExoPlayer.
     // When blank, the video plays via the YouTube embed (id = YouTube ID).
-    @SerializedName("streamUrl") val streamUrl: String = "",
+    // NOTE: nullable on purpose — Gson creates Video without calling the
+    // constructor, so a JSON without these fields leaves them null at
+    // runtime (not ""). Every use must be null-safe (isNullOrBlank).
+    @SerializedName("streamUrl") val streamUrl: String? = null,
     // Optional subtitle file (.vtt or .srt)
-    @SerializedName("subtitleUrl") val subtitleUrl: String = ""
+    @SerializedName("subtitleUrl") val subtitleUrl: String? = null
 ) {
     /** "12:34" style label. */
     fun durationLabel(): String {
