@@ -34,7 +34,7 @@ android {
         compose = true
     }
     composeOptions {
-        kotlinCompilerExtensionVersion = "1.5.15"
+        kotlinCompilerExtensionVersion = "2.4.0"
     }
     packaging {
         resources {
@@ -72,6 +72,11 @@ dependencies {
 
     // Local storage (My List + config cache)
     implementation("androidx.datastore:datastore-preferences:1.0.0")
+
+    // CloudStream API library — the plugin engine (MainAPI, BasePlugin,
+    // extractors). The plugin module's runner code compiles against it,
+    // and the host app bundles it so .cs3 plugins resolve it at runtime.
+    implementation("com.github.recloudstream.cloudstream:library:master-SNAPSHOT")
 
     // Advanced player (ExoPlayer / media3) — HLS, DASH, MP4, MKV, WebM
     implementation("androidx.media3:media3-exoplayer:1.2.1")
