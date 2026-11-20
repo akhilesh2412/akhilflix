@@ -1,5 +1,10 @@
 name: Build AkhilFlix Plugin + APK
 
+# The publish step pushes to the `builds` branch — the GITHUB_TOKEN
+# needs write permission for that (default is read-only).
+permissions:
+  contents: write
+
 # Every push to main/master rebuilds the plugin DEX and the host APK and
 # publishes them to the `builds` branch — exactly like a CloudStream repo.
 # The host app downloads the new DEX on next launch: a full app update,
