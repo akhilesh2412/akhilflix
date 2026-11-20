@@ -62,7 +62,7 @@ fun ReposScreen(
         )
         Spacer(Modifier.height(8.dp))
         Text(
-            text = "Ye sab chalega: repo page ka link, /tree/main wala link, repo ka CloudStream install link (builds/repo.json), ya seedha youtube_courses.json ka link.",
+            text = "Ye sab chalega: repo page ka link, /tree/main wala link, repo ka CloudStream install link (builds/repo.json), ya seedha youtube_courses.json ka link. Asli CloudStream plugin repo (repo.json) bhi add hoga — uske plugins Home par dikhenge, aur kisi plugin par tap karke uska .cs3 download kar sakte ho.",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -123,6 +123,42 @@ fun ReposScreen(
                     }
                     IconButton(onClick = { viewModel.removeRepo(repo.id) }) {
                         Icon(Icons.Filled.Delete, "Remove ${repo.name}")
+                    }
+                }
+            }
+        }
+        Spacer(Modifier.height(16.dp))
+        Text(
+            text = "Plugin repos (${state.pluginRepos.size})",
+            style = MaterialTheme.typography.titleMedium
+        )
+        Spacer(Modifier.height(8.dp))
+        if (state.pluginRepos.isEmpty()) {
+            Text(
+                text = "Abhi koi plugin repo add nahi hai. Upar se kisi CloudStream repo (repo.json) ka link daalo — jaise recloudstream/extensions.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            items(state.pluginRepos) { pluginRepo ->
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(Modifier.weight(1f)) {
+                        Text(
+                            text = pluginRepo.repo.name,
+                            style = MaterialTheme.typography.titleMedium
+                        )
+                        Text(
+                            text = "${pluginRepo.plugins.size} plugins",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    IconButton(onClick = { viewModel.removePluginRepo(pluginRepo.repo.id) }) {
+                        Icon(Icons.Filled.Delete, "Remove ${pluginRepo.repo.name}")
                     }
                 }
             }
