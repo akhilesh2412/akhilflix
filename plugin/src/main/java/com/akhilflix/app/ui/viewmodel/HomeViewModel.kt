@@ -2,9 +2,11 @@ package com.akhilflix.app.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.akhilflix.app.data.model.AddedPluginRepo
 import com.akhilflix.app.data.model.AddedRepo
 import com.akhilflix.app.data.model.AppConfig
 import com.akhilflix.app.data.model.Course
+import com.akhilflix.app.data.model.PluginInfo
 import com.akhilflix.app.data.model.SectionConfig
 import com.akhilflix.app.data.model.Video
 import com.akhilflix.app.data.remote.AppRepository
@@ -13,6 +15,12 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+
+/** One CloudStream plugin repo with its loaded plugins, for the UI. */
+data class PluginRepoUi(
+    val repo: AddedPluginRepo,
+    val plugins: List<PluginInfo>
+)
 
 data class HomeUiState(
     val loading: Boolean = true,
@@ -26,6 +34,9 @@ data class HomeUiState(
     val dynamicSections: List<SectionConfig> = emptyList(),
     val addedRepos: List<AddedRepo> = emptyList(),
     val addedRepoCounts: Map<String, Int> = emptyMap(),
+    // CloudStream plugin repos the user added (repo.json), with their
+    // loaded plugins, rendered on Home after the course sections.
+    val pluginRepos: List<PluginRepoUi> = emptyList(),
     // Last add/remove result, shown on the My Repos screen.
     val repoStatus: String? = null
 )
@@ -89,8 +100,19 @@ class HomeViewModel(private val repository: AppRepository) : ViewModel() {
             dynamicSections = dynamicSections,
             addedRepos = addedRepos,
             addedRepoCounts = addedCounts,
+            pluginRepos = loadPluginRepos(),
             repoStatus = _uiState.value.repoStatus
         )
+    }
+
+    /** Load every saved CloudStream plugin repo (cached in the repository). */
+    private suspend fun loadPluginRepos(): List<PluginRepoUi> {
+        val result = mutableListOf<PluginRepoUi>()
+        for (repo in repository.getAddedPluginRepos()) {
+            val (name, plugins) = repository.fetchPluginRepo(repo.repoJsonUrl) ?: continue
+            result += PluginRepoUi(repo.copy(name = name), plugins)
+        }
+        return result
     }
 
     fun refresh() {
@@ -102,7 +124,8 @@ class HomeViewModel(private val repository: AppRepository) : ViewModel() {
         }
     }
 
-    /** Add any CloudStream repo from a GitHub link the user pastes. */
+    /** Add any CloudStream repo from a GitHub link the user pastes.
+     *  Tries the course catalog first, then the plugin repo (repo.json). */
     fun addRepo(input: String) {
         viewModelScope.launch {
             val resolved = RepoResolver.resolve(input)
@@ -112,6 +135,7 @@ class HomeViewModel(private val repository: AppRepository) : ViewModel() {
                 )
                 return@launch
             }
+            // 1. Course repo: youtube_courses.json on main, then master.
             val current = repository.getAddedRepos()
             if (current.any { it.id == resolved.id }) {
                 _uiState.value = _uiState.value.copy(
@@ -120,26 +144,54 @@ class HomeViewModel(private val repository: AppRepository) : ViewModel() {
                 return@launch
             }
             _uiState.value = _uiState.value.copy(repoStatus = "${resolved.name} load ho raha hai...")
-            var found: Pair<String, List<Course>>? = null
             for (url in resolved.catalogCandidates) {
                 val courses = repository.fetchCatalogRaw(url)
                 if (!courses.isNullOrEmpty()) {
-                    found = url to courses
-                    break
+                    repository.saveAddedRepos(current + AddedRepo(resolved.id, resolved.name, url))
+                    loadInternal()
+                    _uiState.value = _uiState.value.copy(
+                        repoStatus = "${resolved.name} add ho gaya — ${courses.size} courses"
+                    )
+                    return@launch
                 }
             }
-            if (found == null) {
+            // 2. No course catalog — try it as a CloudStream plugin repo
+            // (repo.json -> pluginLists -> plugins.json).
+            val pluginRepos = repository.getAddedPluginRepos()
+            if (pluginRepos.any { it.id == resolved.id }) {
                 _uiState.value = _uiState.value.copy(
-                    repoStatus = "Is repo me courses ka data (youtube_courses.json) nahi mila — sirf wahi repo add hoga jisme youtube_courses.json ho, jaise programming-courses"
+                    repoStatus = "${resolved.name} pehle se added hai"
                 )
                 return@launch
             }
-            val (url, courses) = found
-            repository.saveAddedRepos(current + AddedRepo(resolved.id, resolved.name, url))
-            loadInternal()
+            _uiState.value = _uiState.value.copy(repoStatus = "Plugin repo load ho raha hai...")
+            for (url in resolved.repoJsonCandidates) {
+                val found = repository.fetchPluginRepo(url) ?: continue
+                val (repoName, plugins) = found
+                if (plugins.isEmpty()) continue
+                repository.saveAddedPluginRepos(
+                    pluginRepos + AddedPluginRepo(resolved.id, repoName, url)
+                )
+                loadInternal()
+                _uiState.value = _uiState.value.copy(
+                    repoStatus = "$repoName add ho gaya — ${plugins.size} plugins"
+                )
+                return@launch
+            }
             _uiState.value = _uiState.value.copy(
-                repoStatus = "${resolved.name} add ho gaya — ${courses.size} courses"
+                repoStatus = "Is repo me na courses ka data (youtube_courses.json) mila, na CloudStream plugins (repo.json) — link check karo"
             )
+        }
+    }
+
+    /** Remove a plugin repo the user added. */
+    fun removePluginRepo(repoId: String) {
+        viewModelScope.launch {
+            val current = repository.getAddedPluginRepos()
+            val removed = current.firstOrNull { it.id == repoId } ?: return@launch
+            repository.saveAddedPluginRepos(current.filterNot { it.id == repoId })
+            loadInternal()
+            _uiState.value = _uiState.value.copy(repoStatus = "${removed.name} hata diya")
         }
     }
 
