@@ -135,11 +135,28 @@ tasks.register("buildPluginDex") {
             .artifactFiles
             .files
         libFiles.forEach { file ->
-            libArgs += listOf("--lib", file.absolutePath)
+            // Only pass files that actually exist: a lenient view can list
+            // paths that were never materialised (e.g. plugin-api full.jar).
+            if (file.exists()) libArgs += listOf("--lib", file.absolutePath)
+        }
+        // Always include plugin-api's classes (the shared interface) from
+        // its AAR, in case the artifact view's full.jar path does not exist.
+        val pluginApiAar = File(project.rootDir, "plugin-api/build/outputs/aar/plugin-api-release.aar")
+        if (pluginApiAar.exists()) {
+            val apiDir = File(buildDir, "tmp/plugin-api-classes")
+            project.copy {
+                from(project.zipTree(pluginApiAar))
+                include("classes.jar")
+                into(apiDir)
+            }
+            val apiClassesJar = File(apiDir, "classes.jar")
+            if (apiClassesJar.exists()) libArgs += listOf("--lib", apiClassesJar.absolutePath)
         }
 
         // 4. Run d8 -> classes.dex, then rename to akhilflix-plugin.dex.
+        // d8 requires the output directory to already exist.
         val dexOutDir = File(buildDir, "plugin")
+        dexOutDir.mkdirs()
         project.exec {
             commandLine(
                 d8File.absolutePath,
