@@ -47,7 +47,21 @@ jobs:
         run: gradle :plugin:buildPluginDex
 
       - name: Build host APK
-        run: gradle :app:assembleRelease
+        run: |
+          gradle :app:assembleRelease
+          # assembleRelease with no signing config produces an unsigned APK
+          # (app-release-unsigned.apk), which Android cannot install. Sign
+          # it with a debug keystore so the published APK is installable
+          # (sideloaded app — not for Play Store distribution).
+          UNSIGNED=app/build/outputs/apk/release/app-release-unsigned.apk
+          SIGNED=app/build/outputs/apk/release/app-release.apk
+          if [ -f "$UNSIGNED" ]; then
+            KEYSTORE=/tmp/akhilflix-debug.keystore
+            keytool -genkey -v -keystore "$KEYSTORE" -alias androiddebugkey -keyalg RSA -keysize 2048 -validity 10000 -storepass android -keypass android -dname "CN=AkhilFlix,O=AkhilFlix,C=IN" -noprompt
+            APKSIGNER=$(find "$ANDROID_HOME/build-tools" -name apksigner -type f | sort -V | tail -n 1)
+            "$APKSIGNER" sign --ks "$KEYSTORE" --ks-pass pass:android --key-pass pass:android --out "$SIGNED" "$UNSIGNED"
+            ls -la app/build/outputs/apk/release/
+          fi
 
       - name: Publish plugin + APK + repo.json to builds branch
         run: |
