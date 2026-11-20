@@ -24,6 +24,7 @@ import com.akhilflix.app.ui.components.AppBottomBar
 import com.akhilflix.app.ui.screens.CourseDetailScreen
 import com.akhilflix.app.ui.screens.HomeScreen
 import com.akhilflix.app.ui.screens.MyListScreen
+import com.akhilflix.app.ui.screens.ReposScreen
 import com.akhilflix.app.ui.screens.SearchScreen
 import com.akhilflix.app.ui.screens.VideoPlayerScreen
 import com.akhilflix.app.ui.theme.AkhilFlixTheme
@@ -99,7 +100,8 @@ private fun AkhilFlixNav(
                     },
                     onActionClick = { action ->
                         ActionHandler.perform(action, navController, context)
-                    }
+                    },
+                    onReposClick = { navController.navigate("repos") }
                 )
             }
             composable("courses") {
@@ -115,7 +117,14 @@ private fun AkhilFlixNav(
                     },
                     onActionClick = { action ->
                         ActionHandler.perform(action, navController, context)
-                    }
+                    },
+                    onReposClick = { navController.navigate("repos") }
+                )
+            }
+            composable("repos") {
+                ReposScreen(
+                    viewModel = viewModel,
+                    onBack = { navController.popBackStack() }
                 )
             }
             composable("search") {
