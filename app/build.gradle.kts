@@ -40,7 +40,7 @@ android {
         compose = true
     }
     composeOptions {
-        kotlinCompilerExtensionVersion = "1.5.15"
+        kotlinCompilerExtensionVersion = "2.4.0"
     }
     packaging {
         resources {
@@ -87,6 +87,11 @@ dependencies {
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
     implementation("io.coil-kt:coil-compose:2.5.0")
     implementation("androidx.datastore:datastore-preferences:1.0.0")
+    // CloudStream API library — the plugin engine. Its classes must be in
+    // the HOST app so downloaded .cs3 plugins (loaded with a
+    // PathClassLoader whose parent is the app classloader) can resolve
+    // MainAPI, BasePlugin, extractors, etc. at runtime.
+    implementation("com.github.recloudstream.cloudstream:library:master-SNAPSHOT")
     implementation("androidx.media3:media3-exoplayer:1.2.1")
     implementation("androidx.media3:media3-exoplayer-hls:1.2.1")
     implementation("androidx.media3:media3-exoplayer-dash:1.2.1")
