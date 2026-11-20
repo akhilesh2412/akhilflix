@@ -60,6 +60,12 @@ fun ReposScreen(
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
+        Spacer(Modifier.height(8.dp))
+        Text(
+            text = "Ye sab chalega: repo page ka link, /tree/main wala link, repo ka CloudStream install link (builds/repo.json), ya seedha youtube_courses.json ka link.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
         Spacer(Modifier.height(16.dp))
         OutlinedTextField(
             value = input,
