@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.akhilflix.app.data.model.AppConfig
 import com.akhilflix.app.data.model.Course
+import com.akhilflix.app.data.model.Video
 import com.akhilflix.app.data.remote.AppRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
