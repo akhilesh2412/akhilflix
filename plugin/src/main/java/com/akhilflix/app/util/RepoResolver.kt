@@ -1,16 +1,22 @@
 package com.akhilflix.app.util
 
 /**
- * Turns whatever GitHub link the user pastes into the catalog URL(s)
- * of a CloudStream repo (its youtube_courses.json, same schema as
- * programming-courses / dhruv-rathee-courses).
+ * Turns whatever GitHub / CloudStream link the user pastes into the
+ * catalog URL(s) of a CloudStream repo (its youtube_courses.json, same
+ * schema as programming-courses / dhruv-rathee-courses).
  *
- * Accepted inputs:
+ * A CloudStream repo URL can look like MANY things, so the parsing is
+ * deliberately forgiving — owner + repo are pulled out of the link
+ * wherever they appear, and everything after the repo name is ignored:
  *  - https://github.com/<owner>/<repo>            (repo page)
- *  - https://raw.githubusercontent.com/<owner>/<repo>/main/youtube_courses.json
+ *  - https://github.com/<owner>/<repo>/tree/main  (file listing)
+ *  - https://github.com/<owner>/<repo>/blob/main/youtube_courses.json
+ *  - https://www.github.com/<owner>/<repo>        (www. prefix)
+ *  - <owner>/<repo>                               (bare, no domain)
  *  - https://raw.githubusercontent.com/<owner>/<repo>/builds/repo.json
- *    (a CloudStream install URL — owner/repo are read off it)
- *  - any other https://...json link (tried as-is)
+ *    (a CloudStream install URL — the catalog lives on main/master)
+ *  - https://raw.githubusercontent.com/<owner>/<repo>/main/youtube_courses.json
+ *    (direct catalog link, used as-is)
  *
  * For a repo page the main branch is tried first, then master.
  */
@@ -22,41 +28,39 @@ object RepoResolver {
         val catalogCandidates: List<String>
     )
 
-    private val githubPageRegex =
-        Regex("""^https?://github\.com/([^/]+)/([^/]+?)(?:\.git)?/?(?:[?#].*)?$""")
-    private val rawRegex =
-        Regex("""^https?://raw\.githubusercontent\.com/([^/]+)/([^/]+)/([^/]+)/(.+)$""")
+    // Direct raw link to a youtube_courses.json file (incl. refs/heads/... paths).
+    private val rawCatalogRegex =
+        Regex("""^https?://raw\.githubusercontent\.com/([^/]+)/([^/]+)/.+youtube_courses\.json$""", RegexOption.IGNORE_CASE)
+
+    // owner/repo found ANYWHERE in a github.com / raw.githubusercontent.com link.
+    // Everything after the repo name is ignored: /tree/main, /blob/..., .git,
+    // trailing slash, query string, fragment.
+    private val ownerRepoRegex =
+        Regex("""(?:github\.com|raw\.githubusercontent\.com)/([^/\s?#]+)/([^/\s?#]+?)(?:\.git)?(?:[/\s?#].*)?$""", RegexOption.IGNORE_CASE)
+
+    // Bare "owner/repo" with no domain at all.
+    private val bareRegex = Regex("""^([^/\s]+)/([^/\s]+?)(?:\.git)?$""")
 
     fun resolve(input: String): Resolved? {
         val text = input.trim()
         if (text.isEmpty()) return null
 
-        // Direct raw link to a youtube_courses.json file.
-        rawRegex.matchEntire(text)?.let { m ->
-            val (owner, repo, _, path) = m.destructured
-            if (path.endsWith("youtube_courses.json")) {
-                return Resolved(idOf(owner, repo), repo, listOf(text))
-            }
-            // Any other raw link (e.g. builds/repo.json): the owner/repo
-            // still tell us where the catalog lives.
-            return Resolved(
-                idOf(owner, repo),
-                repo,
-                catalogCandidates(owner, repo)
-            )
+        // Direct raw catalog link — use it exactly as pasted.
+        rawCatalogRegex.matchEntire(text)?.let { m ->
+            val (owner, repo) = m.destructured
+            return Resolved(idOf(owner, repo), repo, listOf(text))
         }
 
-        // github.com/<owner>/<repo> page link.
-        githubPageRegex.matchEntire(text)?.let { m ->
+        // Any GitHub / raw link: pull owner + repo out of it.
+        ownerRepoRegex.find(text)?.let { m ->
             val (owner, repo) = m.destructured
             return Resolved(idOf(owner, repo), repo, catalogCandidates(owner, repo))
         }
 
-        // Anything else ending in .json: try it as a catalog URL as-is.
-        if (text.startsWith("http") && text.endsWith(".json")) {
-            val slug = text.substringAfterLast('/').removeSuffix(".json")
-            val name = slug.ifBlank { "custom-repo" }
-            return Resolved("custom-${kotlin.math.abs(text.hashCode())}", name, listOf(text))
+        // Bare owner/repo.
+        bareRegex.matchEntire(text)?.let { m ->
+            val (owner, repo) = m.destructured
+            return Resolved(idOf(owner, repo), repo, catalogCandidates(owner, repo))
         }
 
         return null
