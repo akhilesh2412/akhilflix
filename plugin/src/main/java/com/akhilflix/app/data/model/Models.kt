@@ -54,7 +54,10 @@ data class SectionConfig(
     @SerializedName("category") val category: String = "",
     @SerializedName("limit") val limit: Int = 20,
     // What tapping a course in this section does: "detail" (default) or "play"
-    @SerializedName("clickAction") val clickAction: String = "detail"
+    // NOTE: nullable on purpose — Gson leaves absent JSON fields null at
+    // runtime (same pitfall as Video.streamUrl), so callers must default
+    // with ?: "detail" instead of relying on the default value.
+    @SerializedName("clickAction") val clickAction: String? = null
 )
 
 /**
