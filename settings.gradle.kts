@@ -10,6 +10,8 @@ dependencyResolutionManagement {
     repositories {
         google()
         mavenCentral()
+        // CloudStream API library (JitPack) — the plugin engine.
+        maven { url = uri("https://jitpack.io") }
     }
 }
 rootProject.name = "AkhilFlix"
