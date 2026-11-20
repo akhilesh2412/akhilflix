@@ -130,7 +130,7 @@ class HomeViewModel(private val repository: AppRepository) : ViewModel() {
             }
             if (found == null) {
                 _uiState.value = _uiState.value.copy(
-                    repoStatus = "Is repo me youtube_courses.json nahi mila — repo me wahi format hona chahiye jo programming-courses me hai"
+                    repoStatus = "Is repo me courses ka data (youtube_courses.json) nahi mila — sirf wahi repo add hoga jisme youtube_courses.json ho, jaise programming-courses"
                 )
                 return@launch
             }
