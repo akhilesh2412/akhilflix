@@ -19,8 +19,9 @@ import com.akhilflix.app.data.model.Course
 object ActionHandler {
 
     /** What tapping a course card does. `action` comes from SectionConfig.clickAction. */
-    fun courseClick(course: Course, action: String, navController: NavController) {
-        when (action.lowercase()) {
+    fun courseClick(course: Course, action: String?, navController: NavController) {
+        // Null-safe: a null/unknown action opens the detail screen.
+        when (action?.lowercase()) {
             // Play the course's first video straight away (no detail screen).
             "play" -> course.videos.firstOrNull()?.let {
                 navController.navigate("player/${it.id}")
