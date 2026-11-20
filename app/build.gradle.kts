@@ -54,6 +54,10 @@ dependencies {
     // Every feature (screens, player, network, images) lives in the
     // plugin DEX downloaded from the GitHub repo.
     implementation(project(":plugin-api"))
+    // Monolithic build: the whole plugin is ALSO compiled into this APK
+    // (reliable on all phones). The DEX download is no longer used at
+    // runtime — content/theme still come from the backend JSON.
+    implementation(project(":plugin"))
 
     val composeBom = platform("androidx.compose:compose-bom:2024.01.00")
     implementation(composeBom)
