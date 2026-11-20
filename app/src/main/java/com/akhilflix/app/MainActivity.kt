@@ -47,12 +47,13 @@ private sealed interface HostState {
 private fun HostScreen() {
     var state by remember { mutableStateOf<HostState>(HostState.Loading) }
     var retryCount by remember { mutableStateOf(0) }
+    // LocalContext.current is a @Composable call — read it in the
+    // composable body, not inside LaunchedEffect (not a @Composable scope).
+    val context = androidx.compose.ui.platform.LocalContext.current
 
     LaunchedEffect(retryCount) {
         state = HostState.Loading
-        when (val result = PluginLoader.load(
-            androidx.compose.ui.platform.LocalContext.current
-        )) {
+        when (val result = PluginLoader.load(context)) {
             is PluginLoader.Result.Ready -> state = HostState.Ready(result.plugin)
             is PluginLoader.Result.Failed -> state = HostState.Failed(result.message)
         }
