@@ -1,4 +1,5 @@
 import java.io.File
+import org.gradle.api.attributes.ArtifactTypeDefinition
 
 plugins {
     id("com.android.library")
@@ -113,27 +114,26 @@ tasks.register("buildPluginDex") {
             ?.firstNotNullOfOrNull { dir -> File(dir, "d8").takeIf { it.exists() } }
             ?: error("d8 not found in Android SDK build-tools under ${sdkDir.absolutePath}")
 
-        // 3. Collect --lib entries: android.jar + every dependency.
-        // AARs contribute their classes.jar so d8 can resolve references
-        // without bundling those classes into the DEX.
+        // 3. Collect --lib entries: android.jar + every dependency's classes.
+        // Request "jar" artifacts via an artifact view so AARs are transformed
+        // to their classes.jar and variant matching works for project
+        // dependencies (a plain .files resolve fails on :plugin-api).
         val libArgs = mutableListOf<String>()
         val androidJar = File(sdkDir, "platforms/android-${android.compileSdk}/android.jar")
         if (androidJar.exists()) libArgs += listOf("--lib", androidJar.absolutePath)
-        val aarLibDir = File(buildDir, "tmp/aar-libs")
-        configurations.getByName("releaseRuntimeClasspath").files.forEach { file ->
-            when {
-                file.name.endsWith(".jar") -> libArgs += listOf("--lib", file.absolutePath)
-                file.name.endsWith(".aar") -> {
-                    val outDir = File(aarLibDir, file.nameWithoutExtension)
-                    project.copy {
-                        from(project.zipTree(file))
-                        include("classes.jar")
-                        into(outDir)
-                    }
-                    val libClassesJar = File(outDir, "classes.jar")
-                    if (libClassesJar.exists()) libArgs += listOf("--lib", libClassesJar.absolutePath)
+        val libFiles = configurations.getByName("releaseRuntimeClasspath")
+            .incoming
+            .artifactView { view ->
+                view.lenient = true
+                view.attributes { attr ->
+                    attr.attribute(ArtifactTypeDefinition.ARTIFACT_TYPE_ATTRIBUTE, "jar")
                 }
             }
+            .artifacts
+            .artifactFiles
+            .files
+        libFiles.forEach { file ->
+            libArgs += listOf("--lib", file.absolutePath)
         }
 
         // 4. Run d8 -> classes.dex, then rename to akhilflix-plugin.dex.
