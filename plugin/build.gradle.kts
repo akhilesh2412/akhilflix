@@ -1,3 +1,5 @@
+import java.io.File
+
 plugins {
     id("com.android.library")
     id("org.jetbrains.kotlin.android")
@@ -92,49 +94,49 @@ tasks.register("buildPluginDex") {
         val buildDir = project.layout.buildDirectory.get().asFile
 
         // 1. Extract classes.jar from the release AAR.
-        val aar = java.io.File(buildDir, "outputs/aar/plugin-release.aar")
+        val aar = File(buildDir, "outputs/aar/plugin-release.aar")
         check(aar.exists()) { "AAR not found: ${aar.absolutePath}. Run assembleRelease first." }
-        val classesJarDir = java.io.File(buildDir, "tmp/plugin-classes")
+        val classesJarDir = File(buildDir, "tmp/plugin-classes")
         project.copy {
             from(project.zipTree(aar))
             include("classes.jar")
             into(classesJarDir)
         }
-        val classesJar = java.io.File(classesJarDir, "classes.jar")
+        val classesJar = File(classesJarDir, "classes.jar")
         check(classesJar.exists()) { "classes.jar not found in ${aar.absolutePath}" }
 
         // 2. Locate d8 in the Android SDK.
         val sdkDir = android.sdkDirectory
-        val d8File = java.io.File(sdkDir, "build-tools").listFiles()
+        val d8File = File(sdkDir, "build-tools").listFiles()
             ?.sortedDescending()
-            ?.firstNotNullOfOrNull { dir -> java.io.File(dir, "d8").takeIf { it.exists() } }
+            ?.firstNotNullOfOrNull { dir -> File(dir, "d8").takeIf { it.exists() } }
             ?: error("d8 not found in Android SDK build-tools under ${sdkDir.absolutePath}")
 
         // 3. Collect --lib entries: android.jar + every dependency.
         // AARs contribute their classes.jar so d8 can resolve references
         // without bundling those classes into the DEX.
         val libArgs = mutableListOf<String>()
-        val androidJar = java.io.File(sdkDir, "platforms/android-${android.compileSdk}/android.jar")
+        val androidJar = File(sdkDir, "platforms/android-${android.compileSdk}/android.jar")
         if (androidJar.exists()) libArgs += listOf("--lib", androidJar.absolutePath)
-        val aarLibDir = java.io.File(buildDir, "tmp/aar-libs")
+        val aarLibDir = File(buildDir, "tmp/aar-libs")
         configurations.getByName("releaseRuntimeClasspath").files.forEach { file ->
             when {
                 file.name.endsWith(".jar") -> libArgs += listOf("--lib", file.absolutePath)
                 file.name.endsWith(".aar") -> {
-                    val outDir = java.io.File(aarLibDir, file.nameWithoutExtension)
+                    val outDir = File(aarLibDir, file.nameWithoutExtension)
                     project.copy {
                         from(project.zipTree(file))
                         include("classes.jar")
                         into(outDir)
                     }
-                    val libClassesJar = java.io.File(outDir, "classes.jar")
+                    val libClassesJar = File(outDir, "classes.jar")
                     if (libClassesJar.exists()) libArgs += listOf("--lib", libClassesJar.absolutePath)
                 }
             }
         }
 
         // 4. Run d8 -> classes.dex, then rename to akhilflix-plugin.dex.
-        val dexOutDir = java.io.File(buildDir, "plugin")
+        val dexOutDir = File(buildDir, "plugin")
         project.exec {
             commandLine(
                 d8File.absolutePath,
@@ -144,8 +146,8 @@ tasks.register("buildPluginDex") {
                 classesJar.absolutePath
             )
         }
-        val dex = java.io.File(dexOutDir, "classes.dex")
-        val pluginDex = java.io.File(dexOutDir, "akhilflix-plugin.dex")
+        val dex = File(dexOutDir, "classes.dex")
+        val pluginDex = File(dexOutDir, "akhilflix-plugin.dex")
         if (dex.exists()) dex.renameTo(pluginDex)
         check(pluginDex.exists()) { "DEX build failed: ${pluginDex.absolutePath} not produced." }
         println("Plugin DEX ready: ${pluginDex.absolutePath} (${pluginDex.length()} bytes)")
