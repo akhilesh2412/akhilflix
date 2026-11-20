@@ -43,6 +43,18 @@ object PluginRunner {
             providersByPlugin[key]?.let { return@runCatching it }
 
             val file = downloadCs3(context, plugin)
+            // Android 14+ rejects a writable dex file ("Writable dex
+            // file ... is not allowed"). CloudStream's own fix: the
+            // .cs3 must be read-only before loading — setReadOnly has
+            // no effect under filesDir on 14+, which is why the file
+            // lives in the app-specific external files dir (see below).
+            try {
+                if (!file.setReadOnly()) {
+                    android.util.Log.e("PluginRunner", "Failed to set read-only on ${file.name}")
+                }
+            } catch (t: Throwable) {
+                android.util.Log.e("PluginRunner", "Failed to set dex as read-only", t)
+            }
             val loader = PathClassLoader(file.absolutePath, context.classLoader)
             val manifestJson = loader.getResourceAsStream("manifest.json")
                 ?.bufferedReader()?.readText()
@@ -67,9 +79,18 @@ object PluginRunner {
         }
     }
 
-    /** Download the plugin's .cs3 into filesDir/plugins, reusing the cached copy for the same version. */
+    /** Download the plugin's .cs3, reusing the cached copy for the same version.
+     *
+     * The file lives in the app-specific EXTERNAL files dir, not filesDir:
+     * CloudStream does the same, because on Android 14+ a dex file under
+     * filesDir is rejected even after setReadOnly ("Writable dex file ...
+     * is not allowed"), while the same file under getExternalFilesDir
+     * loads fine once marked read-only. Falls back to filesDir only if
+     * external storage is unavailable.
+     */
     private fun downloadCs3(context: Context, plugin: PluginInfo): File {
-        val dir = File(context.filesDir, "plugins").apply { mkdirs() }
+        val baseDir = context.getExternalFilesDir(null) ?: context.filesDir
+        val dir = File(baseDir, "plugins").apply { mkdirs() }
         val safeName = (plugin.internalName?.ifBlank { null } ?: plugin.displayName())
             .replace(Regex("[^A-Za-z0-9]+"), "_")
         val file = File(dir, "$safeName-v${plugin.version}.cs3")
