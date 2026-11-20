@@ -40,7 +40,7 @@ jobs:
           if [ ! -x "$SDKMANAGER" ]; then SDKMANAGER=$(find "$ANDROID_HOME/cmdline-tools" -name sdkmanager -type f | head -n 1); fi
           echo "Using sdkmanager: $SDKMANAGER"
           yes | "$SDKMANAGER" --licenses > /dev/null 2>&1 || true
-          "$SDKMANAGER" "platforms;android-34" "platforms;android-37" "build-tools;34.0.0"
+          "$SDKMANAGER" "platforms;android-34" "build-tools;34.0.0"
 
       # No Gradle wrapper in the repo, so install Gradle directly.
       # Gradle 8.13: required by Kotlin 2.4.0 (the CloudStream API
