@@ -114,6 +114,11 @@ kotlin {
 // the app actually runs (MainAPI, extractors, networking) uses old
 // framework APIs, so the metadata check is disabled and the app stays
 // on compileSdk 34. If platform 37 becomes installable, remove this
-// and bump compileSdk instead.
-tasks.named("checkReleaseAarMetadata") { enabled = false }
-tasks.named("checkDebugAarMetadata") { enabled = false }
+// and bump compileSdk instead. configureEach (not tasks.named) is used
+// because AGP creates these tasks lazily — named() fails at
+// configuration time when the task does not exist yet (run #101).
+tasks.configureEach {
+    if (name == "checkReleaseAarMetadata" || name == "checkDebugAarMetadata") {
+        enabled = false
+    }
+}
