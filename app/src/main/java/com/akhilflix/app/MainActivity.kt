@@ -61,18 +61,12 @@ private fun HostScreen() {
 
     when (val s = state) {
         is HostState.Loading -> LoadingScreen()
-        is HostState.Ready -> {
-            // If the plugin's UI throws (bad DEX, missing class, bad data),
-            // show the error instead of the app closing silently.
-            try {
-                s.plugin.Content()
-            } catch (e: Throwable) {
-                ErrorScreen(
-                    message = "Plugin UI error: ${e::class.java.simpleName}: ${e.message ?: "unknown"}",
-                    onRetry = { retryCount++ }
-                )
-            }
-        }
+        // NOTE: Compose does not allow try/catch around composable calls
+        // ("Try catch is not supported around composable function
+        // invocations"), so Content() is called directly. Plugin load
+        // failures are caught in PluginLoader (Throwable) and shown as an
+        // error screen instead of crashing.
+        is HostState.Ready -> s.plugin.Content()
         is HostState.Failed -> ErrorScreen(
             message = s.message,
             onRetry = { retryCount++ }
