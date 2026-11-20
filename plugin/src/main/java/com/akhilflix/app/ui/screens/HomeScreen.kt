@@ -12,7 +12,6 @@ import androidx.compose.material.pullrefresh.PullRefreshIndicator
 import androidx.compose.material.pullrefresh.pullRefresh
 import androidx.compose.material.pullrefresh.rememberPullRefreshState
 import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -55,7 +54,16 @@ fun HomeScreen(
 
     Box(Modifier.pullRefresh(pullState).fillMaxSize()) {
         if (state.loading) {
-            CircularProgressIndicator(Modifier.align(Alignment.Center))
+            // Plain text, no animated spinner: CircularProgressIndicator
+            // crashed on launch (Compose material3/animation version
+            // mismatch), so the startup path deliberately uses no
+            // animation at all.
+            Text(
+                text = "Loading courses...",
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onBackground,
+                modifier = Modifier.align(Alignment.Center)
+            )
             return@Box
         }
         LazyColumn {
