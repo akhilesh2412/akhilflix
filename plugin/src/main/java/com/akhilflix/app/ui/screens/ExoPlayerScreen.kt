@@ -48,12 +48,15 @@ fun ExoPlayerScreen(
         ExoPlayer.Builder(context).build().apply {
             val mimeType = mimeTypeFor(streamUrl)
             val subtitleConfigs = buildList {
-                if (video.subtitleUrl.isNotBlank()) {
+                // Null-safe: subtitleUrl is null when the JSON has no
+                // such field (same Gson pitfall as streamUrl).
+                val subtitleUrl = video.subtitleUrl
+                if (!subtitleUrl.isNullOrBlank()) {
                     add(
                         MediaItem.SubtitleConfiguration.Builder(
-                            Uri.parse(video.subtitleUrl)
+                            Uri.parse(subtitleUrl)
                         )
-                            .setMimeType(subtitleMimeTypeFor(video.subtitleUrl))
+                            .setMimeType(subtitleMimeTypeFor(subtitleUrl))
                             .setLanguage("en")
                             .setSelectionFlags(C.SELECTION_FLAG_DEFAULT)
                             .build()
