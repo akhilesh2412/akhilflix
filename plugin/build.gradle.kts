@@ -126,7 +126,7 @@ tasks.register("buildPluginDex") {
         val libFiles = configurations.getByName("releaseCompileClasspath")
             .incoming
             .artifactView {
-                lenient = true
+                lenient(true)
                 attributes {
                     attribute(Attribute.of("artifactType", String::class.java), "jar")
                 }
