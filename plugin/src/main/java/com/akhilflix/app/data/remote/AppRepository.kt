@@ -7,10 +7,12 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.core.stringSetPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import com.akhilflix.app.data.model.AddedPluginRepo
 import com.akhilflix.app.data.model.AddedRepo
 import com.akhilflix.app.data.model.AppConfig
 import com.akhilflix.app.data.model.Course
 import com.akhilflix.app.data.model.CourseCatalog
+import com.akhilflix.app.data.model.PluginInfo
 import com.akhilflix.app.util.Constants
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
@@ -38,6 +40,10 @@ class AppRepository(private val context: Context) {
     private val api = ApiFactory.api
     private val myListKey = stringSetPreferencesKey("my_list_course_ids")
     private val addedReposKey = stringPreferencesKey("added_repos_json")
+    private val addedPluginReposKey = stringPreferencesKey("added_plugin_repos_json")
+
+    // In-memory plugin-repo cache: repo.json URL -> (display name, plugins)
+    private val pluginRepoCache = mutableMapOf<String, Pair<String, List<PluginInfo>>>()
 
     // In-memory catalog cache: source key -> courses
     private val catalogCache = mutableMapOf<String, List<Course>>()
@@ -124,6 +130,56 @@ class AppRepository(private val context: Context) {
         context.dataStore.edit { prefs ->
             prefs[addedReposKey] = gson.toJson(repos)
         }
+    }
+
+    // --- User-added CloudStream plugin repos (local only, DataStore) ---
+
+    val addedPluginRepos: Flow<List<AddedPluginRepo>> =
+        context.dataStore.data.map { prefs ->
+            val json = prefs[addedPluginReposKey] ?: return@map emptyList<AddedPluginRepo>()
+            runCatching {
+                gson.fromJson<List<AddedPluginRepo>>(
+                    json,
+                    object : TypeToken<List<AddedPluginRepo>>() {}.type
+                ) ?: emptyList()
+            }.getOrElse { emptyList() }
+        }
+
+    suspend fun getAddedPluginRepos(): List<AddedPluginRepo> = addedPluginRepos.first()
+
+    suspend fun saveAddedPluginRepos(repos: List<AddedPluginRepo>) {
+        context.dataStore.edit { prefs ->
+            prefs[addedPluginReposKey] = gson.toJson(repos)
+        }
+    }
+
+    /**
+     * Fetch a CloudStream plugin repo: repo.json -> pluginLists -> plugins.json.
+     * Returns (display name, plugins) or null when the URL is not a plugin
+     * repo / has no plugins. If the URL itself is a plugin list (a JSON
+     * array), that is used directly.
+     */
+    suspend fun fetchPluginRepo(repoJsonUrl: String): Pair<String, List<PluginInfo>>? {
+        pluginRepoCache[repoJsonUrl]?.let { return it }
+        // 1. The URL itself might be a plugin list (a JSON array).
+        val direct = runCatching { api.fetchPlugins(repoJsonUrl) }.getOrNull()
+        if (!direct.isNullOrEmpty()) {
+            val result = "Plugins" to direct
+            pluginRepoCache[repoJsonUrl] = result
+            return result
+        }
+        // 2. Otherwise treat it as a repo manifest (repo.json).
+        val result = runCatching {
+            val manifest = api.fetchRepoJson(repoJsonUrl)
+            val name = manifest.name?.ifBlank { null } ?: "Plugin Repo"
+            val all = mutableListOf<PluginInfo>()
+            for (listUrl in manifest.pluginLists ?: emptyList()) {
+                runCatching { api.fetchPlugins(listUrl) }.onSuccess { all += it }
+            }
+            if (all.isEmpty()) null else name to all
+        }.getOrNull()
+        if (result != null) pluginRepoCache[repoJsonUrl] = result
+        return result
     }
 
     // --- My List (local only) ---
