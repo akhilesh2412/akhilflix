@@ -1,0 +1,7 @@
+{
+  "name": "AkhilFlix",
+  "version": 112,
+  "pluginClass": "com.akhilflix.app.AkhilFlixPluginImpl",
+  "pluginUrl": "https://raw.githubusercontent.com/akhilesh2412/akhilflix/builds/akhilflix-plugin.dex",
+  "appName": "AkhilFlix"
+}
