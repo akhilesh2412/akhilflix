@@ -6,6 +6,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.ViewModel
@@ -18,17 +19,23 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.akhilflix.app.data.model.AppConfig
+import com.akhilflix.app.data.model.PluginInfo
+import com.akhilflix.app.data.model.Video
 import com.akhilflix.app.data.remote.AppRepository
 import com.akhilflix.app.ui.ActionHandler
 import com.akhilflix.app.ui.components.AppBottomBar
 import com.akhilflix.app.ui.screens.CourseDetailScreen
+import com.akhilflix.app.ui.screens.ExoPlayerScreen
 import com.akhilflix.app.ui.screens.HomeScreen
 import com.akhilflix.app.ui.screens.MyListScreen
+import com.akhilflix.app.ui.screens.PluginDetailScreen
+import com.akhilflix.app.ui.screens.PluginHomeScreen
 import com.akhilflix.app.ui.screens.ReposScreen
 import com.akhilflix.app.ui.screens.SearchScreen
 import com.akhilflix.app.ui.screens.VideoPlayerScreen
 import com.akhilflix.app.ui.theme.AkhilFlixTheme
 import com.akhilflix.app.ui.viewmodel.HomeViewModel
+import com.akhilflix.app.ui.viewmodel.PluginViewModel
 
 /**
  * The plugin's whole app. The host only calls this from the plugin
@@ -46,15 +53,29 @@ fun AkhilFlixRoot() {
         }
     }
     val viewModel: HomeViewModel = viewModel(factory = factory)
+    val pluginFactory = remember {
+        object : ViewModelProvider.Factory {
+            @Suppress("UNCHECKED_CAST")
+            override fun <T : ViewModel> create(modelClass: Class<T>): T =
+                PluginViewModel(context.applicationContext) as T
+        }
+    }
+    val pluginViewModel: PluginViewModel = viewModel(factory = pluginFactory)
     val state by viewModel.uiState.collectAsState()
     AkhilFlixTheme(theme = state.config.theme) {
-        AkhilFlixNav(viewModel = viewModel, config = state.config, repository = repository)
+        AkhilFlixNav(
+            viewModel = viewModel,
+            pluginViewModel = pluginViewModel,
+            config = state.config,
+            repository = repository
+        )
     }
 }
 
 @Composable
 private fun AkhilFlixNav(
     viewModel: HomeViewModel,
+    pluginViewModel: PluginViewModel,
     config: AppConfig,
     repository: AppRepository
 ) {
@@ -65,6 +86,10 @@ private fun AkhilFlixNav(
     // Bottom bar only on the tab screens, never on detail/player.
     val tabScreens = config.tabs.map { it.screen }
     val showBar = currentRoute in tabScreens
+    // The plugin the user tapped (its .cs3 is loaded by PluginRunner).
+    var currentPlugin by androidx.compose.runtime.remember {
+        androidx.compose.runtime.mutableStateOf<PluginInfo?>(null)
+    }
 
     Scaffold(
         bottomBar = {
@@ -101,7 +126,12 @@ private fun AkhilFlixNav(
                     onActionClick = { action ->
                         ActionHandler.perform(action, navController, context)
                     },
-                    onReposClick = { navController.navigate("repos") }
+                    onReposClick = { navController.navigate("repos") },
+                    onPluginClick = { plugin ->
+                        currentPlugin = plugin
+                        pluginViewModel.openPlugin(plugin)
+                        navController.navigate("pluginHome")
+                    }
                 )
             }
             composable("courses") {
@@ -118,7 +148,12 @@ private fun AkhilFlixNav(
                     onActionClick = { action ->
                         ActionHandler.perform(action, navController, context)
                     },
-                    onReposClick = { navController.navigate("repos") }
+                    onReposClick = { navController.navigate("repos") },
+                    onPluginClick = { plugin ->
+                        currentPlugin = plugin
+                        pluginViewModel.openPlugin(plugin)
+                        navController.navigate("pluginHome")
+                    }
                 )
             }
             composable("repos") {
@@ -163,6 +198,55 @@ private fun AkhilFlixNav(
                     videoId = videoId,
                     onBack = { navController.popBackStack() }
                 )
+            }
+            // --- Running CloudStream plugins (.cs3) ---
+            composable("pluginHome") {
+                val plugin = currentPlugin
+                if (plugin == null) {
+                    navController.popBackStack()
+                } else {
+                    PluginHomeScreen(
+                        viewModel = pluginViewModel,
+                        plugin = plugin,
+                        onItemClick = { item ->
+                            pluginViewModel.openItem(item)
+                            navController.navigate("pluginDetail")
+                        },
+                        onBack = { navController.popBackStack() }
+                    )
+                }
+            }
+            composable("pluginDetail") {
+                PluginDetailScreen(
+                    viewModel = pluginViewModel,
+                    onStreamReady = { navController.navigate("pluginPlayer") },
+                    onBack = {
+                        pluginViewModel.clearDetail()
+                        navController.popBackStack()
+                    }
+                )
+            }
+            composable("pluginPlayer") {
+                val pluginState by pluginViewModel.uiState.collectAsState()
+                val stream = pluginState.pendingStream
+                if (stream == null) {
+                    navController.popBackStack()
+                } else {
+                    ExoPlayerScreen(
+                        video = Video(
+                            id = "plugin-stream",
+                            title = stream.title,
+                            streamUrl = stream.url,
+                            subtitleUrl = stream.subtitleUrl
+                        ),
+                        streamUrl = stream.url,
+                        onBack = {
+                            pluginViewModel.clearStream()
+                            navController.popBackStack()
+                        },
+                        headers = stream.headers
+                    )
+                }
             }
         }
     }
