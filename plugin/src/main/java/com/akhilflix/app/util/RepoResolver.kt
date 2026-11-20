@@ -19,13 +19,21 @@ package com.akhilflix.app.util
  *    (direct catalog link, used as-is)
  *
  * For a repo page the main branch is tried first, then master.
+ *
+ * TWO kinds of repo are supported, and the candidates cover both:
+ *  - course repos: youtube_courses.json (main, then master)
+ *  - CloudStream plugin repos: repo.json — the pasted link itself when
+ *    it ends in .json, else main/repo.json, master/repo.json,
+ *    builds/repo.json (CloudStream repos keep their manifest in one
+ *    of these places)
  */
 object RepoResolver {
 
     data class Resolved(
         val id: String,
         val name: String,
-        val catalogCandidates: List<String>
+        val catalogCandidates: List<String>,
+        val repoJsonCandidates: List<String>
     )
 
     // Direct raw link to a youtube_courses.json file (incl. refs/heads/... paths).
@@ -48,19 +56,41 @@ object RepoResolver {
         // Direct raw catalog link — use it exactly as pasted.
         rawCatalogRegex.matchEntire(text)?.let { m ->
             val (owner, repo) = m.destructured
-            return Resolved(idOf(owner, repo), repo, listOf(text))
+            return Resolved(idOf(owner, repo), repo, listOf(text), emptyList())
         }
 
         // Any GitHub / raw link: pull owner + repo out of it.
         ownerRepoRegex.find(text)?.let { m ->
             val (owner, repo) = m.destructured
-            return Resolved(idOf(owner, repo), repo, catalogCandidates(owner, repo))
+            return Resolved(
+                idOf(owner, repo),
+                repo,
+                catalogCandidates(owner, repo),
+                repoJsonCandidates(owner, repo, text)
+            )
         }
 
         // Bare owner/repo.
         bareRegex.matchEntire(text)?.let { m ->
             val (owner, repo) = m.destructured
-            return Resolved(idOf(owner, repo), repo, catalogCandidates(owner, repo))
+            return Resolved(
+                idOf(owner, repo),
+                repo,
+                catalogCandidates(owner, repo),
+                repoJsonCandidates(owner, repo, text)
+            )
+        }
+
+        // Any other https://...json link: try it as a repo manifest as-is.
+        if (text.startsWith("http") && text.endsWith(".json")) {
+            val slug = text.substringAfterLast('/').removeSuffix(".json")
+            val name = slug.ifBlank { "custom-repo" }
+            return Resolved(
+                "custom-${kotlin.math.abs(text.hashCode())}",
+                name,
+                emptyList(),
+                listOf(text)
+            )
         }
 
         return null
@@ -70,6 +100,18 @@ object RepoResolver {
         "https://raw.githubusercontent.com/$owner/$repo/main/youtube_courses.json",
         "https://raw.githubusercontent.com/$owner/$repo/master/youtube_courses.json"
     )
+
+    private fun repoJsonCandidates(owner: String, repo: String, pasted: String): List<String> {
+        val base = "https://raw.githubusercontent.com/$owner/$repo"
+        val candidates = mutableListOf<String>()
+        // The pasted link itself first when it already points at a .json file
+        // (e.g. a CloudStream install link like .../builds/repo.json).
+        if (pasted.trim().endsWith(".json")) candidates += pasted.trim()
+        candidates += "$base/main/repo.json"
+        candidates += "$base/master/repo.json"
+        candidates += "$base/builds/repo.json"
+        return candidates.distinct()
+    }
 
     private fun idOf(owner: String, repo: String): String {
         val clean = { s: String ->
