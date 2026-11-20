@@ -4,13 +4,16 @@ import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.core.stringSetPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import com.akhilflix.app.data.model.AddedRepo
 import com.akhilflix.app.data.model.AppConfig
 import com.akhilflix.app.data.model.Course
 import com.akhilflix.app.data.model.CourseCatalog
 import com.akhilflix.app.util.Constants
 import com.google.gson.Gson
+import com.google.gson.reflect.TypeToken
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
@@ -34,6 +37,7 @@ class AppRepository(private val context: Context) {
     private val gson = Gson()
     private val api = ApiFactory.api
     private val myListKey = stringSetPreferencesKey("my_list_course_ids")
+    private val addedReposKey = stringPreferencesKey("added_repos_json")
 
     // In-memory catalog cache: source key -> courses
     private val catalogCache = mutableMapOf<String, List<Course>>()
@@ -93,6 +97,32 @@ class AppRepository(private val context: Context) {
         return when (sourceKey) {
             "dhruv" -> Constants.DHRUV_CATALOG_URL
             else -> Constants.PROGRAMMING_CATALOG_URL
+        }
+    }
+
+    /** Fetch a catalog without caching — used to validate a repo the user adds. Null on any failure. */
+    suspend fun fetchCatalogRaw(url: String): List<Course>? {
+        return runCatching { api.fetchCatalog(url).courses }.getOrNull()
+    }
+
+    // --- User-added CloudStream repos (local only, DataStore) ---
+
+    val addedRepos: Flow<List<AddedRepo>> =
+        context.dataStore.data.map { prefs ->
+            val json = prefs[addedReposKey] ?: return@map emptyList<AddedRepo>()
+            runCatching {
+                gson.fromJson<List<AddedRepo>>(
+                    json,
+                    object : TypeToken<List<AddedRepo>>() {}.type
+                ) ?: emptyList()
+            }.getOrElse { emptyList() }
+        }
+
+    suspend fun getAddedRepos(): List<AddedRepo> = addedRepos.first()
+
+    suspend fun saveAddedRepos(repos: List<AddedRepo>) {
+        context.dataStore.edit { prefs ->
+            prefs[addedReposKey] = gson.toJson(repos)
         }
     }
 
