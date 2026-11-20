@@ -27,9 +27,6 @@ android {
         sourceCompatibility = JavaVersion.VERSION_1_8
         targetCompatibility = JavaVersion.VERSION_1_8
     }
-    kotlinOptions {
-        jvmTarget = "1.8"
-    }
     buildFeatures {
         compose = true
     }
@@ -176,5 +173,13 @@ tasks.register("buildPluginDex") {
         if (dex.exists()) dex.renameTo(pluginDex)
         check(pluginDex.exists()) { "DEX build failed: ${pluginDex.absolutePath} not produced." }
         println("Plugin DEX ready: ${pluginDex.absolutePath} (${pluginDex.length()} bytes)")
+    }
+}
+
+// Kotlin 2.4: the old kotlinOptions.jvmTarget is an error; the
+// compilerOptions DSL replaces it (same 1.8 target as before).
+kotlin {
+    compilerOptions {
+        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_1_8)
     }
 }
