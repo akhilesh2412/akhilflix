@@ -8,4 +8,7 @@ plugins {
     // (com.github.recloudstream.cloudstream:library), which is compiled
     // with Kotlin 2.4 metadata — a 1.9 compiler cannot read it.
     id("org.jetbrains.kotlin.android") version "2.4.0" apply false
+    // Kotlin 2.0+: the Compose Compiler Gradle plugin is required when
+    // compose is enabled (run #91 failed without it).
+    id("org.jetbrains.kotlin.plugin.compose") version "2.4.0" apply false
 }
