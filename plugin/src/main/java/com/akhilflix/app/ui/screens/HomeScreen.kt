@@ -27,6 +27,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.akhilflix.app.data.model.AppAction
 import com.akhilflix.app.data.model.Course
+import com.akhilflix.app.ui.components.PluginSection
 import com.akhilflix.app.ui.components.SectionRenderer
 import com.akhilflix.app.ui.viewmodel.HomeViewModel
 
@@ -117,6 +118,13 @@ fun HomeScreen(
                     courses = courses,
                     onCourseClick = onCourseClick,
                     onWatchClick = onWatchClick
+                )
+            }
+            // CloudStream plugin repos the user added (repo.json).
+            items(state.pluginRepos) { pluginRepo ->
+                PluginSection(
+                    repoName = pluginRepo.repo.name,
+                    plugins = pluginRepo.plugins
                 )
             }
         }
