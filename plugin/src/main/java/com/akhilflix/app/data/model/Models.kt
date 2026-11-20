@@ -72,6 +72,19 @@ data class AppAction(
     @SerializedName("target") val target: String = ""
 )
 
+/**
+ * A CloudStream repo the user added himself from GitHub
+ * ("My Repos" screen). Saved in DataStore, survives restarts.
+ * catalogUrl always points at that repo's youtube_courses.json
+ * (same schema as the programming-courses / dhruv-rathee-courses
+ * repos), so any repo in that format just works.
+ */
+data class AddedRepo(
+    @SerializedName("id") val id: String,
+    @SerializedName("name") val name: String,
+    @SerializedName("catalogUrl") val catalogUrl: String
+)
+
 // ---------------------------------------------------------------------------
 // Course catalogs (youtube_courses.json) — same schema as the
 // programming-courses and dhruv-rathee-courses repos.
