@@ -182,9 +182,13 @@ Catalog categories (must match exactly):
 
 ## Build commands
 
+CI builds both on every push (see `.github/workflows/build-plugin.yml`).
+Locally, open the project in Android Studio and Run, or with Gradle
+installed:
+
 ```bash
-./gradlew :app:assembleRelease     # host APK (install this once)
-./gradlew :plugin:buildPluginDex   # plugin DEX -> plugin/build/plugin/akhilflix-plugin.dex
+gradle :app:assembleRelease     # host APK (install this once)
+gradle :plugin:buildPluginDex   # plugin DEX -> plugin/build/plugin/akhilflix-plugin.dex
 ```
 
 > The project was written without a local Android SDK, so do a first Gradle
